@@ -1,18 +1,19 @@
 from uuid import UUID, uuid7
 
 from sqlalchemy import String
+from flask_login import UserMixin
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
-from flask_login import UserMixin
+from custom_types.uuid import UUIDType
 
 class User(Base, UserMixin):
     __tablename__ = "user"
 
     id: Mapped[UUID] = mapped_column(
-        String(36),
+        UUIDType(),
         primary_key=True,
-        default=lambda: str(uuid7())
+        default=uuid7()
     )
 
     username: Mapped[str] = mapped_column(

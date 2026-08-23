@@ -1,7 +1,8 @@
+from uuid import UUID
 from sqlalchemy import select
 from pydantic import ValidationError
-from flask_login import LoginManager
 from flask import Flask, request, jsonify
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 
 from database import db
 from models.login_request import LoginRequest
@@ -16,7 +17,21 @@ login_manager = LoginManager()
 db.init_app(app)
 login_manager.init_app(app)
 
+login_manager.login_view = "login"
+
 from models.user import User
+
+@login_manager.user_loader
+def load_user(user_id: str):
+    stmt = select(User).where(
+        User.id == UUID(user_id)
+     )
+
+    user = db.session.scalar(stmt)
+
+    print("USER FOUND:", user)
+     
+    return user
 
 @app.route("/login", methods=["POST"])
 def login():
@@ -31,6 +46,7 @@ def login():
         }), 400
 
     username = login_data.username
+    password = login_data.password
 
     stmt = select(User).where(
         User.username == username
@@ -38,17 +54,33 @@ def login():
 
     user = db.session.scalar(stmt)
 
-    if user is None:
+    if user is None or user.password != password:
          return jsonify({
             "error": "Invalid username or password"
         }), 401
 
-    print(user)
+    login_user(user)
 
+    print("USER:", user)
+    print("AUTHENTICATED:", current_user.is_authenticated)
+    print("CURRENT USER:", current_user)
 
-@app.route("/hello-world", methods=["GET"])
-def hello_world():
-    return "Hello World"
+    return jsonify({
+        "message": "Sucessfull login"
+    }), 200
+
+@app.route("/logout", methods=["POST"])
+@login_required
+def logout():
+    print(current_user)
+    print(current_user.is_authenticated)
+
+    logout_user()
+
+    return jsonify({
+        "message": "Sucessfull logout"
+    })
+    
 
 
 if __name__ == "__main__":
