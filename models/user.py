@@ -15,13 +15,13 @@ class User(Base, UserMixin):
         default=lambda: str(uuid7())
     )
 
-    name: Mapped[str] = mapped_column(
+    username: Mapped[str] = mapped_column(
         String(80), 
         nullable=False, 
         unique=True
     )
 
     password: Mapped[str] = mapped_column(
-        String(30), 
+        String(255), 
         nullable=False
     )
