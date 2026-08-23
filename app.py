@@ -9,6 +9,7 @@ from database import db
 from models.login_request import LoginRequest
 from models.create_user_request import CreateUserRequest
 from models.user_response import UserResponse
+from models.update_user_request import UpdateUserRequest
 
 
 app = Flask(__name__)
@@ -72,9 +73,6 @@ def login():
 @app.route("/logout", methods=["POST"])
 @login_required
 def logout():
-    print(current_user)
-    print(current_user.is_authenticated)
-
     logout_user()
 
     return jsonify({
@@ -125,6 +123,43 @@ def get_user_by_id(user_id: UUID):
     return jsonify({
         "user": user_response.model_dump(mode="json")
     }), 200
+
+@app.route("/me/password/<uuid:user_id>", methods=["PATCH"])
+@login_required
+def update_password(user_id: UUID):
+    if current_user.id != user_id:
+         return jsonify({
+              "error": "You cannot update another user's password"
+         }), 403
+    
+    try:
+        data = request.json
+        request_data = UpdateUserRequest.model_validate(data) 
+    except ValidationError as e:
+        return jsonify({
+            "error": "Invalid update data",
+            "details": e.errors()
+        }), 400
+
+    current_user.password = generate_password_hash(request_data.password)
+
+    db.session.commit()
+
+    return jsonify({
+        "message": "Password updated successfully"
+    })
+
+@app.route("/me", methods=["DELETE"])
+@login_required
+def delete_user():
+    user = current_user._get_current_object()
+    
+    logout_user()
+
+    db.session.delete(user)
+    db.session.commit()
+
+    return "", 204
 
 if __name__ == "__main__":
     app.run(debug=True)
