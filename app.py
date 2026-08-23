@@ -8,6 +8,8 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from database import db
 from models.login_request import LoginRequest
 from models.create_user_request import CreateUserRequest
+from models.user_response import UserResponse
+
 
 app = Flask(__name__)
 
@@ -102,7 +104,27 @@ def create_user():
             "message": "User created with sucess"
     }), 201
 
+@app.route("/user/<uuid:user_id>", methods=["GET"])
+def get_user_by_id(user_id: UUID):
+    stmt = select(User).where(
+        User.id == user_id
+    )
 
+    user = db.session.scalar(stmt)
+
+    if user is None:
+            return jsonify({
+            "error": "User not found"
+        }), 404
+
+    user_response = UserResponse(
+        id=user.id,
+        username=user.username
+    )
+
+    return jsonify({
+        "user": user_response.model_dump(mode="json")
+    }), 200
 
 if __name__ == "__main__":
     app.run(debug=True)
