@@ -15,7 +15,7 @@ from models.update_user_request import UpdateUserRequest
 app = Flask(__name__)
 
 app.config["SECRET_KEY"] = "my_secret_key"
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
+app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:admin123@127.0.0.1:3306/flask-crud"
 
 login_manager = LoginManager()
 
@@ -117,17 +117,18 @@ def get_user_by_id(user_id: UUID):
 
     user_response = UserResponse(
         id=user.id,
-        username=user.username
+        username=user.username,
+        role=user.role
     )
 
     return jsonify({
         "user": user_response.model_dump(mode="json")
     }), 200
 
-@app.route("/me/password/<uuid:user_id>", methods=["PATCH"])
+@app.route("/password/<uuid:user_id>", methods=["PATCH"])
 @login_required
 def update_password(user_id: UUID):
-    if current_user.id != user_id:
+    if current_user.id != user_id and current_user.role == "user":
          return jsonify({
               "error": "You cannot update another user's password"
          }), 403
@@ -141,7 +142,18 @@ def update_password(user_id: UUID):
             "details": e.errors()
         }), 400
 
-    current_user.password = generate_password_hash(request_data.password)
+    stmt = select(User).where(
+        User.id == user_id
+    )
+    
+    user = db.session.scalar(stmt)
+
+    if user is None:
+        return jsonify({
+            "error": "User not found"
+        }), 404
+
+    user.password = generate_password_hash(request_data.password)
 
     db.session.commit()
 

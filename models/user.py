@@ -26,3 +26,9 @@ class User(Base, UserMixin):
         String(255), 
         nullable=False
     )
+
+    role: Mapped[str] = mapped_column(
+        String(80),
+        nullable=False,
+        default="user"
+    )
